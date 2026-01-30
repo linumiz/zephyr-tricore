@@ -1,0 +1,67 @@
+# Copyright (c) 2024 Infineon Technologies AG
+# SPDX-License-Identifier: Apache-2.0
+
+# Infineon AURIX 2nd Generation Devices
+
+config SOC_SERIES_TC3X
+	bool
+	select SOC_FAMILY_AURIX
+
+config SOC_SERIES
+	default "tc3x" if SOC_SERIES_TC3X
+
+config SOC_TC37x
+	bool
+	select SOC_SERIES_TC3X
+
+config SOC_TC39xB
+	bool
+	select SOC_SERIES_TC3X
+
+config SOC_TC375TP
+	bool
+	select SOC_TC37x
+
+config SOC_TC375TP_CPU0
+	bool
+	select SOC_TC375TP
+
+config SOC_TC375TP_CPU1
+	bool
+	select SOC_TC375TP
+
+config SOC_TC375TP_CPU2
+	bool
+	select SOC_TC375TP
+
+config SOC_TC397XP
+	bool
+	select SOC_TC39xB
+
+config SOC_TC397XP_CPU0
+	bool
+	select SOC_TC397XP
+
+config SOC_TC397XP_CPU1
+	bool
+	select SOC_TC397XP
+
+config SOC_TC397XP_CPU2
+	bool
+	select SOC_TC397XP
+
+config SOC_TC397XP_CPU3
+	bool
+	select SOC_TC397XP
+
+config SOC_TC397XP_CPU4
+	bool
+	select SOC_TC397XP
+
+config SOC_TC397XP_CPU5
+	bool
+	select SOC_TC397XP
+
+config SOC
+	default "tc375tp" if SOC_TC375TP
+	default "tc397xp" if SOC_TC397XP
