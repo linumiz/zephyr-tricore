@@ -3,6 +3,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include "zephyr/drivers/interrupt_controller/intc_aurix_ir.h"
+#include <stdint.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/init.h>
 #include <zephyr/drivers/timer/system_timer.h>
@@ -27,9 +29,14 @@
 #define Ifx_STM       Ifx_CPU_STM
 #define STM_IRQ_IDX   COND_CODE_1(CONFIG_TRICORE_VIRTUALIZATION, (CONFIG_TRICORE_VM_ID), (1))
 #endif
+#define STM_IRQ DT_IRQN_BY_IDX(DT_NODELABEL(stm), STM_IRQ_IDX)
 
 /* STM registers */
 static Ifx_STM *const STM_TIMER = (Ifx_STM *)DT_REG_ADDR(DT_NODELABEL(stm));
+/* Test value */
+#if defined(CONFIG_TEST)
+const int32_t z_sys_timer_irq_for_test = STM_IRQ;
+#endif
 
 /* Timer values */
 #define TICKS_PER_SEC   CONFIG_SYS_CLOCK_TICKS_PER_SEC
@@ -64,14 +71,9 @@ static Ifx_STM *const STM_TIMER = (Ifx_STM *)DT_REG_ADDR(DT_NODELABEL(stm));
 #define CYCLES_MAX_4 (CYCLES_MAX_3 / 2 + CYCLES_MAX_3 / 4)
 #define CYCLES_MAX   (CYCLES_MAX_4 + LSB_GET(CYCLES_MAX_4))
 
-static struct k_spinlock lock;
 static uint64_t last_count;
 static uint64_t last_ticks;
 static uint32_t last_elapsed;
-
-#if defined(CONFIG_TEST)
-const int32_t z_sys_timer_irq_for_test = STM_IRQ;
-#endif
 
 static uint32_t get_time32(void)
 {
@@ -103,7 +105,7 @@ static void set_compare_irq(bool enabled)
 
 static void sys_clock_isr(void)
 {
-	k_spinlock_key_t key = k_spin_lock(&lock);
+	k_spinlock_key_t key = sys_clock_lock();
 
 	STM_TIMER->ISCR.B.CMP0IRR = 1;
 
@@ -118,14 +120,21 @@ static void sys_clock_isr(void)
 	if (!IS_ENABLED(CONFIG_TICKLESS_KERNEL)) {
 		uint64_t next = last_count + CYCLES_PER_TICK;
 
-		/* Even though we use only the lower 32bits for compare an overflow is
-		 * not possible as we make sure that the CYCLES_PER_TICK is smaller than 32 bits
-		 */
 		set_compare((uint32_t)next);
+
+		/* Check if previous compare value was missed and announce 
+		 * the missed tick.
+		 */
+		if (next - now < 100 && get_time64() > next && STM_TIMER->ICR.B.CMP0IR == 0) {
+			last_count += CYCLES_PER_TICK;
+			last_ticks += 1;
+			dticks += 1;
+			next += CYCLES_PER_TICK;
+			set_compare(next);
+		}
 	}
 
-	k_spin_unlock(&lock, key);
-	sys_clock_announce(dticks);
+	sys_clock_announce_locked(dticks, key);
 }
 
 void sys_clock_set_timeout(int32_t ticks, bool idle)
@@ -133,8 +142,6 @@ void sys_clock_set_timeout(int32_t ticks, bool idle)
 	if (!IS_ENABLED(CONFIG_TICKLESS_KERNEL)) {
 		return;
 	}
-
-	k_spinlock_key_t key = k_spin_lock(&lock);
 	uint64_t cyc;
 
 	if (ticks == K_TICKS_FOREVER) {
@@ -145,14 +152,14 @@ void sys_clock_set_timeout(int32_t ticks, bool idle)
 			cyc = last_count + CYCLES_MAX;
 		}
 	}
-	if (idle) {
-		set_compare_irq(false);
-	} else {
-		set_compare_irq(true);
-	}
+
 	set_compare(cyc);
 
-	k_spin_unlock(&lock, key);
+	/* Check if the compare value is already missed and trigger the interrupt if so. */
+	if (ticks < 2 && get_time64() > cyc && STM_TIMER->ICR.B.CMP0IR == 0) {
+		intc_aurix_ir_irq_raise(STM_IRQ);
+	}
+
 }
 
 uint32_t sys_clock_elapsed(void)
@@ -161,13 +168,11 @@ uint32_t sys_clock_elapsed(void)
 		return 0;
 	}
 
-	k_spinlock_key_t key = k_spin_lock(&lock);
 	uint64_t now = get_time64();
 	uint64_t dcycles = now - last_count;
 	uint32_t dticks = (cycle_diff_t)dcycles / CYCLES_PER_TICK;
 
 	last_elapsed = dticks;
-	k_spin_unlock(&lock, key);
 	return dticks;
 }
 
@@ -187,8 +192,6 @@ void sys_clock_disable(void)
 {
 	set_compare_irq(false);
 }
-
-#define STM_IRQ DT_IRQN_BY_IDX(DT_NODELABEL(stm), STM_IRQ_IDX)
 
 static int sys_clock_driver_init(void)
 {
@@ -210,7 +213,7 @@ static int sys_clock_driver_init(void)
 	last_count = last_ticks * CYCLES_PER_TICK;
 
 	/* Set debug freeze if selected */
-#if CONFIG_DEBUG
+#if CONFIG_TEST
 	STM_TIMER->OCS.U = 0x12000000;
 #endif
 	Ifx_STM_CMCON cmcon = {.B.MSIZE0 = 31, .B.MSTART0 = 0};
@@ -224,8 +227,10 @@ static int sys_clock_driver_init(void)
 
 	if (!IS_ENABLED(CONFIG_TICKLESS_KERNEL)) {
 		set_compare((uint32_t)(last_count + CYCLES_PER_TICK));
-		set_compare_irq(true);
+	} else {
+		set_compare((uint32_t)(last_count + CYCLES_MAX));
 	}
+	set_compare_irq(true);
 
 	irq_enable(STM_IRQ);
 
