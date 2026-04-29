@@ -20,7 +20,7 @@ static ALWAYS_INLINE uint32_t arch_proc_id(void)
 
 static ALWAYS_INLINE _cpu_t *arch_curr_cpu(void)
 {
-#if defined(CONFIG_USERSPACE)
+#if defined(CONFIG_SMP)
 	return &_kernel.cpus[arch_proc_id()];
 #else
 	return &_kernel.cpus[0];

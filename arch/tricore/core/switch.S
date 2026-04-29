@@ -16,28 +16,30 @@ GTEXT(z_thread_mark_switched_in)
 
 /* void z_tricore_switch(k_thread_t *switch_to, k_thread_t *switch_from) */
 SECTION_FUNC(TEXT, z_tricore_switch)
+#if CONFIG_CPU_TC18
 	/* Save old context */
-	mfcr	%d14, 0xFE00
-	mfcr	%d15, 0xFE34
+	mfcr	%d14, TRICORE_PCXI
+	mfcr	%d15, TRICORE_PPRS
 	st.d	[%a5]+_thread_offset_to_saved_pcxi, %e14
-
 	/* Load new context */
 	ld.d 	%e14, [%a4]+_thread_offset_to_saved_pcxi
+#else
+	/* Save old context */
+	mfcr	%d14, TRICORE_PCXI
+	st.w	[%a5]+_thread_offset_to_saved_pcxi, %d14
+	/* Load new context */
+	ld.w 	%d14, [%a4]+_thread_offset_to_saved_pcxi
+#endif
 
 #if CONFIG_INSTRUMENT_THREAD_SWITCHING
 	call	z_thread_mark_switched_in
 #endif
+
 	/* Activate new thread context */
-	mtcr	0xFE34, %d15
-	mtcr	0xFE00, %d14
+#if CONFIG_CPU_TC18
+	mtcr	TRICORE_PPRS, %d15
+#endif
+	mtcr	TRICORE_PCXI, %d14
 	isync
-
-	/* CPU PCXI now on new chain - safe to reclaim old dead thread */
-	ld.bu	%d15, [%a5]+_thread_offset_to_thread_state
-	jz.t	%d15, 3, not_dead
-	mov.aa	%a4, %a5
-	call	z_tricore_reclaim_csa
-
-not_dead:
 
 	fret

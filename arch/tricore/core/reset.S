@@ -84,8 +84,8 @@ csa_loop:
 	mov	%d14, 0
 	st.w	[%a14]-64, %d14
 
-	/* Store LCX with 3 less entries for context depletion trap */
-	addi	%d15, %d15, -3
+	/* Store LCX with 8 less entries for context depletion trap */
+	addi	%d15, %d15, -8
 	mtcr	TRICORE_LCX, %d15
 	isync
 

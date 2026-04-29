@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/arch/structs.h>
 #include <zephyr/kernel.h>
 #include <kernel_arch_data.h>
 #include <gen_offset.h>
@@ -13,8 +14,8 @@
 
 /* struct coop member offsets */
 GEN_OFFSET_SYM(_callee_saved_t, pcxi);
-
 GEN_OFFSET_SYM(_thread_base_t, thread_state);
+GEN_OFFSET_SYM(_cpu_arch_t, to_reclaim);
 
 /* CSA offsets */
 GEN_OFFSET_SYM(z_tricore_lower_context_t, a4);

@@ -90,6 +90,16 @@ SECTION_FUNC(TEXT, _isr_wrapper)
 	call	z_get_next_switch_handle
 	jz.a	%a2, no_reschedule
 
+	/* Reclaim CSAs if needed */
+	ld.a	%a13, [%a15]+_cpu_offset_to_to_reclaim
+	jz.a	%a13, no_reclaim
+	mfcr	%d15, TRICORE_PCXI
+	st.w	[%a13]+_thread_offset_to_saved_pcxi, %d15
+	call	z_tricore_reclaim_csa
+	mov.a	%a13, 0
+	st.a	[%a15]+_cpu_offset_to_to_reclaim, %a13
+
+no_reclaim:
 	/* Perform thread switch */
 	mov.aa	%a4, %a2
 	mov.aa	%a5, %a14

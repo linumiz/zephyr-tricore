@@ -31,4 +31,6 @@
 #define _thread_offset_to_saved_pcxi                                                               \
 	(___thread_t_callee_saved_OFFSET + ___callee_saved_t_pcxi_OFFSET)
 
+#define _cpu_offset_to_to_reclaim (___cpu_t_arch_OFFSET + ___cpu_arch_t_to_reclaim_OFFSET)
+
 #endif

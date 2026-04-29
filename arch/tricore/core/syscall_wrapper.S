@@ -52,16 +52,16 @@ dispatch_syscall:
 	j syscall_return
 
 except_syscall:
-	mfcr  %d15, 0xFE00
-	sh    %d5, %d15, 12
-	insert %d5, %d5, %d15, 6, 16
-	mov.a %a4, %d5
-	call  z_tricore_fatal_error
-	j syscall_return
+	mfcr  	%d15, 0xFE00
+	sh    	%d5, %d15, 12
+	insert	%d5, %d5, %d15, 6, 16
+	mov.a 	%a4, %d5
+	call  	z_tricore_fatal_error
+	j 	syscall_return
 
 switch_syscall:
 	fcall	z_tricore_switch
-	j syscall_return
+	j 	syscall_return
 
 syscall_return:
 	rslcx

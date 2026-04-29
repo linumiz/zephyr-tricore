@@ -120,7 +120,14 @@ void z_impl_k_thread_abort(k_tid_t thread)
 
 	z_thread_abort(thread);
 
-	if (thread != _current) {
+	/* Check if the z_thread_abort deffered the context switch
+	 * to the isr wrapper. In that case, the CSAs will be reclaimed
+	 * during the next context switch away from the dummy thread.
+	 * Otherwise, we must reclaim the CSAs here.
+	 */
+	if (_current == &_thread_dummy) {
+		_current_cpu->arch.to_reclaim = thread;
+	} else {
 		z_tricore_reclaim_csa(thread);
 	}
 

@@ -130,7 +130,7 @@ void z_tricore_fatal_error(unsigned int reason, const struct arch_esf *lower)
 		upper->d11);
 	LOG_ERR("D12: %08x D13: %08x D14: %08x D15: %08x", upper->d12, upper->d13, upper->d14,
 		upper->d15);
-	LOG_ERR("PC:  %08x SP:  %08x PSW: %08x PCXI: %08x", upper->a11, upper->a10, upper->psw,
+	LOG_ERR("PC:  %08x SP:  %08x PSW: %08x PCXI: %08x", lower->a11, upper->a10, upper->psw,
 		upper->pcxi);
 #endif
 
@@ -206,9 +206,13 @@ void z_tricore_fault(uint8_t trap_class, uint8_t tin)
 
 void __weak z_tricore_fault_fcu(void)
 {
+#if CONFIG_TEST
+	__asm ("debug");
+#else
 	while (1) {
 		/* FCU faults are not expected to be recoverable, so just loop here. */
 	}
+#endif
 }
 
 #ifdef CONFIG_USERSPACE
