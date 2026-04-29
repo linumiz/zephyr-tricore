@@ -9,6 +9,12 @@ config SYS_CLOCK_HW_CYCLES_PER_SEC
 config CLOCK_CONTROL
 	default y
 
+if TEST
+# Increase the default CSA count to pass the tests
+config TRICORE_CSA_COUNT
+	default 384
+endif 
+
 rsource "*/Kconfig.defconfig"
 
 endif # SOC_FAMILY_AURIX
