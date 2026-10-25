@@ -69,8 +69,8 @@ supported AURIX SoC families.
      - Y
      - Y
    * - Direct interrupts
-     - N
-     - N
+     - Y
+     - Y
    * - CPU idling
      - Y
      - Y
@@ -240,7 +240,8 @@ On interrupt entry, the hardware:
 - jumps to the vector entry at ``BIV + 32 * PIPN``.
 
 Zephyr provides 256 vector entries with 32-byte spacing. Each entry saves the
-lower context and jumps to ``_isr_wrapper``, which reads the active interrupt
+lower context and jumps to ``z_tricore_prio_isr_<priority>``, a weak alias of
+``_isr_wrapper`` unless a direct ISR uses that priority. ``_isr_wrapper`` reads the active interrupt
 number from the interrupt router and dispatches through the software ISR
 table. ``_isr_wrapper`` re-enables interrupts before calling the handler, so
 a higher-priority interrupt can nest.
@@ -256,6 +257,16 @@ Locking and unlocking IRQs
 ``arch_irq_lock()`` returns the current ICR value as the key and executes the
 ``DISABLE`` instruction, which clears ICR.IE. ``arch_irq_unlock()`` executes
 ``ENABLE`` if ICR.IE was set in the key.
+
+Direct interrupts
+-----------------
+
+:c:macro:`IRQ_DIRECT_CONNECT` binds an ISR declared with
+:c:macro:`ISR_DIRECT_DECLARE` to the vector of its priority, bypassing the
+software ISR table. The priority must be an integer literal and each priority
+can have one direct ISR only. The ISR return value requests a reschedule.
+``ISR_DIRECT_HEADER()``, ``ISR_DIRECT_FOOTER()`` and ``ISR_DIRECT_PM()`` have
+no effect.
 
 Dynamic interrupts
 ------------------
