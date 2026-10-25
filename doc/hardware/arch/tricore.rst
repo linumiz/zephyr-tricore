@@ -78,11 +78,11 @@ supported AURIX SoC families.
      -
      -
    * - HW range-based MPU (DPR/CPR)
-     - N
-     - N
+     - Y
+     - Y
    * - MPU stack guard
-     - N
-     - N
+     - Y
+     - Y
    * - **Timer**
      -
      -
@@ -202,6 +202,9 @@ The handler saves the lower context and calls ``z_tricore_switch()``, which:
 - stores the current PCXI, the head of the outgoing thread's CSA chain, in
   the outgoing thread,
 - loads the PCXI of the incoming thread,
+- with :kconfig:option:`CONFIG_TRICORE_MPU`, programs the MPU for the
+  incoming thread; on TC1.8P it also saves and restores PPRS, the protection
+  set the thread returns to,
 - returns with FRET, which restores the upper context from the incoming
   thread's CSA chain.
 
@@ -308,15 +311,39 @@ The system call trap (class 6) is used by the kernel for context switching
 (``syscall 1``), raising exceptions (``syscall 2``) and IRQ offloading
 (``syscall 3``).
 
+A memory protection trap (class 1) on an access to a stack guard is reported
+as a stack overflow (``K_ERR_STACK_CHK_FAIL``).
+
 The implementation is in :file:`arch/tricore/core/fatal.c` and
 :file:`arch/tricore/core/vectors.c`.
+
+Memory protection
+=================
+
+The TriCore MPU checks every data access against the Data Protection Range
+(DPR) registers and every instruction fetch against the Code Protection Range
+(CPR) registers. A protection set (PRS) holds the read, write and execute
+enable bits for all ranges; PSW.PRS selects the active set.
+
+:kconfig:option:`CONFIG_TRICORE_MPU` enables the driver. The number of ranges
+and sets are given by :kconfig:option:`CONFIG_TRICORE_MPU_DATA_REGIONS`,
+:kconfig:option:`CONFIG_TRICORE_MPU_CODE_REGIONS` and
+:kconfig:option:`CONFIG_TRICORE_MPU_PROTECTION_SETS`. Threads run on PRS 0
+unless the ``K_PROTECTION_SET_MASK`` bits of their options select another
+set. The memory protection trap (class 1) handler runs on PRS 0.
+
+With :kconfig:option:`CONFIG_HW_STACK_PROTECTION`, a guard of
+:kconfig:option:`CONFIG_MPU_STACK_GUARD_MIN_SIZE` bytes below the stack of the
+running thread and at the bottom of the interrupt stack is left out of the
+RAM ranges, so an overflow into the guard traps.
+
+The implementation is in :file:`arch/tricore/core/mpu.c`.
 
 Userspace
 =========
 
 Userspace is not supported. The architecture does not select
-``ARCH_HAS_USERSPACE`` and there is no memory protection driver for the
-range-based DPR/CPR registers.
+``ARCH_HAS_USERSPACE``.
 
 Cache
 =====
