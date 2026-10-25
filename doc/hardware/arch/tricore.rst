@@ -54,8 +54,8 @@ supported AURIX SoC families.
      - Y
      - Y
    * - Userspace
-     - N
-     - N
+     - Y
+     - Y
    * - **Interrupt handling**
      -
      -
@@ -307,9 +307,9 @@ logs the trap class, the Trap Identification Number (TIN) and a register dump
 and then calls ``z_fatal_error()``. A free context list underflow (FCU, class
 3 TIN 4) leaves no CSA to handle the trap and halts the core.
 
-The system call trap (class 6) is used by the kernel for context switching
-(``syscall 1``), raising exceptions (``syscall 2``) and IRQ offloading
-(``syscall 3``).
+The system call trap (class 6) is used for user mode system calls
+(``syscall 0``), context switching (``syscall 1``), raising exceptions
+(``syscall 2``) and IRQ offloading (``syscall 3``).
 
 A memory protection trap (class 1) on an access to a stack guard is reported
 as a stack overflow (``K_ERR_STACK_CHK_FAIL``).
@@ -342,8 +342,15 @@ The implementation is in :file:`arch/tricore/core/mpu.c`.
 Userspace
 =========
 
-Userspace is not supported. The architecture does not select
-``ARCH_HAS_USERSPACE``.
+Userspace requires :kconfig:option:`CONFIG_TRICORE_MPU`. User threads run in
+User-1 mode (PSW.IO) on PRS 1, which grants access to the thread stack and
+the partitions of the thread's memory domain; kernel threads stay on PRS 0.
+When a domain has more partitions than free data ranges, the ranges of other
+domains are released.
+
+System calls are dispatched with ``syscall 0``. The handler switches to the
+privileged stack of the thread, calls the handler from ``_k_syscall_table``
+and returns to user mode on the user stack.
 
 Cache
 =====
