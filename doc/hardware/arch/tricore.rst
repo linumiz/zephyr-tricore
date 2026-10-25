@@ -433,9 +433,12 @@ The following table lists the peripheral drivers available in the TriCore port:
 | Interrupt Router (IR)     |     Y     |     Y     |
 +---------------------------+-----------+-----------+
 
-.. note::
-
-   GPIO interrupts are not supported yet.
+GPIO pin interrupts use the external request unit (ERU) of the SCU. The
+``infineon,eru-inputs`` property of a port routes a pin to an ERU input and
+output channel, and the port's interrupt is the service request of that
+output channel. The ERU detects edges only, so level interrupts are not
+supported. Pin interrupt configuration returns ``-ENOTSUP`` for level
+triggers and for pins that are not listed in ``infineon,eru-inputs``.
 
 Flashing and debugging
 **********************
