@@ -93,8 +93,8 @@ supported AURIX SoC families.
      -
      -
    * - Instruction/data cache control
-     - N
-     - N
+     - Y
+     - Y
    * - **Floating point**
      -
      -
@@ -317,6 +317,22 @@ Userspace
 Userspace is not supported. The architecture does not select
 ``ARCH_HAS_USERSPACE`` and there is no memory protection driver for the
 range-based DPR/CPR registers.
+
+Cache
+=====
+
+Each core has a program cache and a write-back data cache. Segments 8 and 9
+are cached; segments A and B are their non-cached mirrors. Both caches are
+bypassed after reset, and Zephyr leaves them bypassed until the application
+calls ``sys_cache_instr_enable()`` or ``sys_cache_data_enable()`` with
+:kconfig:option:`CONFIG_CACHE_MANAGEMENT`.
+
+The data cache is not coherent with other bus masters. Range operations work
+on cache lines; whole-cache operations walk every index and way. The program
+cache can only be invalidated as a whole, so a range invalidation invalidates
+all of it, and flushing it returns ``-ENOTSUP``.
+
+The implementation is in :file:`arch/tricore/core/cache.c`.
 
 Floating point
 ==============
